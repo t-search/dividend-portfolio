@@ -774,6 +774,14 @@ function updateTotals(){
 }
 
 /* ── Portfolio render ── */
+/* ── 並べ替え（表示のみ・保存しない。起動時はコード順） ── */
+const sortState={jp:{key:'code',dir:1},us:{key:'code',dir:1}};
+function setSort(market,key){
+  const st=sortState[market];
+  if(st.key===key){st.dir=-st.dir;}
+  else{st.key=key;st.dir=(key==='code')?1:-1;}
+  renderPortfolio();
+}
 function renderPortfolio(){
   const tbJp=document.getElementById('portfolio-body-jp');
   const tbUs=document.getElementById('portfolio-body-us');
@@ -820,38 +828,51 @@ function renderPortfolio(){
     if(!b.code)return -1;
     return a.code.localeCompare(b.code,'ja',{numeric:true});
   };
-  const jpRows=portfolio.filter(r=>r.market==='jp').sort(byCode);
-  const usRows=portfolio.filter(r=>r.market==='us').sort(byCode);
-  const colHdJp=`<tr style="background:var(--surface2);">
-    <th style="width:76px;text-align:left;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">コード</th>
-    <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">銘柄名</th>
-    <th style="width:40px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">株数</th>
-    <th style="width:78px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">取得単価(¥)</th>
-    <th style="width:56px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">前日比(¥)</th>
-    <th style="width:78px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">実勢単価(¥)</th>
-    <th style="width:85px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">取得価額(¥)</th>
-    <th style="width:85px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">実勢価額(¥)</th>
-    <th style="width:78px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">評価損益(¥)</th>
-    <th style="width:78px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">配当単価(¥)</th>
-    <th style="width:76px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">取得利回り</th>
-    <th style="width:76px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">実勢利回り</th>
-    <th style="width:85px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">配当収入(¥)</th>
+  const sortRows=(rows,market)=>{
+    const {key,dir}=sortState[market];
+    if(key==='code')return rows.sort((x,y)=>byCode(x,y)*dir);
+    const val=r=>key==='gain'?gainJpy(r):key==='ybuy'?yldBuy(r):key==='ymkt'?yldMkt(r):calcAnnualJpy(r);
+    return rows.sort((x,y)=>{
+      const vx=val(x),vy=val(y);
+      if(vx==null&&vy==null)return byCode(x,y);
+      if(vx==null)return 1;
+      if(vy==null)return -1;
+      return ((vx-vy)*dir)||byCode(x,y);
+    });
+  };
+  const jpRows=sortRows(portfolio.filter(r=>r.market==='jp'),'jp');
+  const usRows=sortRows(portfolio.filter(r=>r.market==='us'),'us');
+  const colHd=market=>{
+    const u=market==='jp'?'¥':'$';
+    const base='padding:6px 4px;font-size:11px;font-weight:500;white-space:nowrap;border-bottom:1px solid var(--border);';
+    const th=(label,w,align,cls,key)=>{
+      const wd=w?`width:${w}px;`:'';
+      const c=cls?` class="${cls}"`:'';
+      if(!key)return`<th style="${wd}text-align:${align};${base}color:var(--text3);"${c}>${label}</th>`;
+      const active=sortState[market].key===key;
+      const ac=market==='jp'?'var(--accent2)':'var(--accent)';
+      const acBg=market==='jp'?'var(--accent2-bg)':'var(--accent-bg)';
+      const btn=`display:inline-block;white-space:nowrap;padding:1px 4px;border-radius:4px;border:1px solid ${active?ac:'var(--border2)'};background:${active?acBg:'var(--surface)'};color:${active?ac:'var(--text2)'};font-weight:500;cursor:pointer;user-select:none;`;
+      return`<th style="${wd}text-align:${align};${base}"${c}><span style="${btn}" onclick="setSort('${market}','${key}')" title="クリックで並べ替え">${label}</span></th>`;
+    };
+    return`<tr style="background:var(--surface2);">
+    ${th('コード',76,'left','','code')}
+    ${th('銘柄名',0,'left','')}
+    ${th('株数',40,'right','hm')}
+    ${th('取得単価('+u+')',78,'right','hm')}
+    ${th('前日比('+u+')',56,'right','hm')}
+    ${th('実勢単価('+u+')',78,'right','hm')}
+    ${th('取得価額(¥)',85,'right','hm')}
+    ${th('実勢価額(¥)',85,'right','hm')}
+    ${th('評価損益(¥)',78,'right','hm','gain')}
+    ${th('配当単価('+u+')',78,'right','')}
+    ${th('取得利回り',76,'right','','ybuy')}
+    ${th('実勢利回り',76,'right','hm','ymkt')}
+    ${th('配当収入(¥)',85,'right','','ann')}
   </tr>`;
-  const colHdUs=`<tr style="background:var(--surface2);">
-    <th style="width:76px;text-align:left;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">コード</th>
-    <th style="text-align:left;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">銘柄名</th>
-    <th style="width:40px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">株数</th>
-    <th style="width:78px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">取得単価($)</th>
-    <th style="width:56px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">前日比($)</th>
-    <th style="width:78px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">実勢単価($)</th>
-    <th style="width:85px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">取得価額(¥)</th>
-    <th style="width:85px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">実勢価額(¥)</th>
-    <th style="width:78px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">評価損益(¥)</th>
-    <th style="width:78px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">配当単価($)</th>
-    <th style="width:76px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">取得利回り</th>
-    <th style="width:76px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);" class="hm">実勢利回り</th>
-    <th style="width:85px;text-align:right;padding:6px 8px;font-size:11px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);">配当収入(¥)</th>
-  </tr>`;
+  };
+  const colHdJp=colHd('jp');
+  const colHdUs=colHd('us');
   const totalRow=(rows,market)=>{
     const gainSum=rows.reduce((s,r)=>{const g=gainJpy(r);return g!==null?s+g:s;},0);
     const annSum=rows.reduce((s,r)=>s+calcAnnualJpy(r),0);
