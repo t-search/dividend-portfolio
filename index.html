@@ -267,11 +267,13 @@ input[type="number"]{-moz-appearance:textfield;}
       <div class="sum-lbl">運用利回り</div>
       <div class="sum-val" id="yield-mgmt">—</div>
       <div class="sum-sub-tax">［税引前］ <span id="yield-mgmt-pre">—</span></div>
+      <div class="sum-sub-tax">運用価額 <span id="yield-mgmt-base">—</span></div>
     </div>
     <div class="sum-card" style="background:#fdece0;border-color:#f0b088;cursor:pointer;" onclick="openAccountYieldModal()" title="クリックで内訳を表示">
       <div class="sum-lbl">投資収益率</div>
       <div class="sum-val" id="yield-account">—</div>
       <div class="sum-sub-tax">［税引前］ <span id="yield-account-pre">—</span></div>
+      <div class="sum-sub-tax">投資総額 <span id="yield-account-base">—</span></div>
     </div>
   </div>
 
@@ -766,6 +768,8 @@ function updateTotals(){
   const ymgmtPre=document.getElementById('yield-mgmt-pre');
   if(ymgmt)ymgmt.textContent=mgmtDenom>0?(afterTax/mgmtDenom*100).toFixed(2)+'%':'—';
   if(ymgmtPre)ymgmtPre.textContent=mgmtDenom>0?(preTax/mgmtDenom*100).toFixed(2)+'%':'—';
+  const ymgmtBase=document.getElementById('yield-mgmt-base');
+  if(ymgmtBase)ymgmtBase.textContent=mgmtDenom>0?fmtJpy(mgmtDenom):'—';
   refreshAccountYieldCard();
 }
 
@@ -1431,7 +1435,9 @@ function calcAccountYield(){
   return {mktAll,mgmtTotal,investTotal,gain,gainAfter,yld,yldAfter};
 }
 function refreshAccountYieldCard(){
-  const {yld,yldAfter}=calcAccountYield();
+  const {yld,yldAfter,investTotal}=calcAccountYield();
+  const baseEl=document.getElementById('yield-account-base');
+  if(baseEl)baseEl.textContent=investTotal>0?fmtJpy(investTotal):'—';
   const el=document.getElementById('yield-account');
   if(el)el.textContent=yldAfter!==null?yldAfter.toFixed(2)+'%':'—';
   const pre=document.getElementById('yield-account-pre');
