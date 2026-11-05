@@ -831,7 +831,8 @@ function renderPortfolio(){
   const sortRows=(rows,market)=>{
     const {key,dir}=sortState[market];
     if(key==='code')return rows.sort((x,y)=>byCode(x,y)*dir);
-    const val=r=>key==='gain'?gainJpy(r):key==='ybuy'?yldBuy(r):key==='ymkt'?yldMkt(r):calcAnnualJpy(r);
+    const mktOf=r=>r.shares&&r.mktPrice?(r.market==='us'?r.shares*r.mktPrice*getFx():r.shares*r.mktPrice):null;
+    const val=r=>key==='mkt'?mktOf(r):key==='gain'?gainJpy(r):key==='ybuy'?yldBuy(r):key==='ymkt'?yldMkt(r):calcAnnualJpy(r);
     return rows.sort((x,y)=>{
       const vx=val(x),vy=val(y);
       if(vx==null&&vy==null)return byCode(x,y);
@@ -863,7 +864,7 @@ function renderPortfolio(){
     ${th('前日比('+u+')',56,'right','hm')}
     ${th('実勢単価('+u+')',78,'right','hm')}
     ${th('取得価額(¥)',85,'right','hm')}
-    ${th('実勢価額(¥)',85,'right','hm')}
+    ${th('実勢価額(¥)',85,'right','hm','mkt')}
     ${th('評価損益(¥)',78,'right','hm','gain')}
     ${th('配当単価('+u+')',78,'right','')}
     ${th('取得利回り',76,'right','','ybuy')}
